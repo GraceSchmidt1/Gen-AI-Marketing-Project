@@ -2,18 +2,18 @@ import io
 import os
 from datetime import datetime
 
-import anthropic
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+import llm_client
 from constants import (
     C, PLATFORM_COLORS, CARD_BG, CARD_BG_SOLID, BORDER,
     ICP_COLORS, PILLAR_COLORS,
 )
 
 
-def render(df, plat_summary, start_date, end_date, run_ai, sidebar_api_key):
+def render(df, plat_summary, start_date, end_date, run_ai, sidebar_api_key, model_backend="claude"):
     st.markdown(
         f"""<div style="padding:0 0 20px 0">
           <h1 style="margin:0;font-size:26px;font-weight:800;">Social Media Analytics</h1>
@@ -165,10 +165,11 @@ def render(df, plat_summary, start_date, end_date, run_ai, sidebar_api_key):
     st.markdown("### AI-Generated Insights")
     if run_ai:
         resolved_key = sidebar_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-        if not resolved_key:
+        if model_backend == "claude" and not resolved_key:
             st.error("No API key found. Enter it in the sidebar or set ANTHROPIC_API_KEY.")
         else:
-            with st.spinner("Analyzing with Claude Opus..."):
+            label = "Gemma-4 (LM Studio)" if model_backend == "local" else "Claude Opus"
+            with st.spinner(f"Analyzing with {label}..."):
                 try:
                     fmt_perf = (df.groupby(["Platform","Format"])
                                 .agg(Posts=("Date","count"), AvgEngagement=("Engagement","mean"),
@@ -219,22 +220,25 @@ TOP 5 POSTS:
 Format as numbered list. Each insight: **Bold headline** → 2-3 sentence observation with specific numbers → *Recommendation:* one concrete next step tied to the oncology audience or content pillar strategy.
 No preamble. Start with insight 1."""
 
-                    client_ai = anthropic.Anthropic(api_key=resolved_key)
-                    resp = client_ai.messages.create(
-                        model="claude-opus-4-6", max_tokens=1500,
-                        messages=[{"role": "user", "content": prompt}],
+                    text = llm_client.chat(
+                        prompt,
+                        api_key=resolved_key,
+                        model_backend=model_backend,
+                        claude_model="claude-opus-4-6",
+                        max_tokens=1500,
                     )
                     st.markdown(
                         f'<div style="background:{CARD_BG_SOLID};border:1px solid {BORDER};'
                         f'border-radius:12px;padding:24px 28px;line-height:1.8;">'
-                        f'{resp.content[0].text.replace(chr(10),"<br>")}</div>',
+                        f'{text.replace(chr(10),"<br>")}</div>',
                         unsafe_allow_html=True)
-                except anthropic.AuthenticationError:
-                    st.error("Invalid API key.")
                 except Exception as exc:
                     st.error(f"Error: {exc}")
     else:
-        st.info("Enter your Anthropic API key in the sidebar and click **Generate AI Insights**.")
+        if model_backend == "claude":
+            st.info("Enter your Anthropic API key in the sidebar and click **Generate AI Insights**.")
+        else:
+            st.info("Click **Generate AI Insights** in the sidebar (LM Studio must be running on localhost:1234).")
 
     # Export
     st.markdown("---")

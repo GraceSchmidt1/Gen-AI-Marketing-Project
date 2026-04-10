@@ -3,7 +3,7 @@ import streamlit as st
 
 from constants import C
 from data_loader import load_all, load_segments, DATA_DIR
-from tabs import overview, weekly_review, forecast_strategy, utm_standards
+from tabs import overview, weekly_review, forecast_strategy, utm_standards, content_generator
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -98,12 +98,27 @@ with st.sidebar:
     )
 
     st.markdown("---")
-    st.markdown("### AI Insights")
-    sidebar_api_key = st.text_input(
-        "Anthropic API Key", type="password",
-        placeholder="sk-ant-...",
-        help="Or set ANTHROPIC_API_KEY env var",
+    st.markdown("### AI Model")
+    model_choice = st.radio(
+        "Backend",
+        ["Claude (Anthropic)", "Local — Gemma-4 (LM Studio)"],
+        label_visibility="collapsed",
     )
+    model_backend = "local" if model_choice == "Local — Gemma-4 (LM Studio)" else "claude"
+
+    if model_backend == "claude":
+        sidebar_api_key = st.text_input(
+            "Anthropic API Key", type="password",
+            placeholder="sk-ant-...",
+            help="Or set ANTHROPIC_API_KEY env var",
+        )
+    else:
+        sidebar_api_key = ""
+        st.caption(
+            "Requires **LM Studio** running on `localhost:1234` "
+            "with **Gemma-4 E4B** loaded."
+        )
+
     run_ai = st.button("Generate AI Insights", type="primary", use_container_width=True)
 
 # ── Apply overview filters ────────────────────────────────────────────────────
@@ -127,21 +142,24 @@ plat_summary = (
 )
 
 # ── Tab navigation ────────────────────────────────────────────────────────────
-tab_overview, tab_weekly, tab_utm, tab_predict = st.tabs(
-    ["📊 Overview", "📅 Weekly Review", "🔗 UTM Standards", "🔮 Forecast & Strategy"]
+tab_overview, tab_weekly, tab_utm, tab_predict, tab_content = st.tabs(
+    ["📊 Overview", "📅 Weekly Review", "🔗 UTM Standards", "🔮 Forecast & Strategy", "✍️ Content Generator"]
 )
 
 with tab_overview:
-    overview.render(df, plat_summary, start_date, end_date, run_ai, sidebar_api_key)
+    overview.render(df, plat_summary, start_date, end_date, run_ai, sidebar_api_key, model_backend)
 
 with tab_weekly:
     weekly_review.render(df_all_seg)
 
 with tab_predict:
-    forecast_strategy.render(df, sidebar_api_key)
+    forecast_strategy.render(df, sidebar_api_key, model_backend)
 
 with tab_utm:
     utm_standards.render()
+
+with tab_content:
+    content_generator.render(df, sidebar_api_key, model_backend)
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown(

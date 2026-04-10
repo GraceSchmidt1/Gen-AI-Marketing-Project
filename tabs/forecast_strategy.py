@@ -1,19 +1,19 @@
 import os
 
-import anthropic
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+import llm_client
 from constants import (
     C, PLATFORM_COLORS, CARD_BG, CARD_BG_SOLID, BORDER,
     ICP_COLORS, PILLAR_COLORS,
 )
 
 
-def render(df, sidebar_api_key):
+def render(df, sidebar_api_key, model_backend="claude"):
     st.markdown(
         f"""<div style="padding:0 0 20px 0">
           <h1 style="margin:0;font-size:26px;font-weight:800;">Forecast &amp; Strategy</h1>
@@ -446,11 +446,12 @@ def render(df, sidebar_api_key):
     st.markdown("---")
     st.markdown("### 🤖 AI Strategic Analysis")
     resolved_key = sidebar_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
-    if not resolved_key:
+    ai_ready = model_backend == "local" or bool(resolved_key)
+
+    if not ai_ready:
         st.info("Add your Anthropic API key in the sidebar to generate AI-powered strategic recommendations.")
     else:
         if st.button("Generate AI Strategy Report", key="fc_ai_btn"):
-            # Build context for Claude
             fc_lines = []
             for s in forecast_summaries:
                 direction = "upward" if s["slope"] >= 0 else "downward"
@@ -507,14 +508,16 @@ Provide exactly:
 
 Be concise and direct. No generic advice — every recommendation must cite specific numbers from the data."""
 
-            with st.spinner("Generating strategic analysis…"):
+            label = "Gemma-4 (LM Studio)" if model_backend == "local" else "Claude Opus"
+            with st.spinner(f"Generating strategic analysis with {label}…"):
                 try:
-                    client = anthropic.Anthropic(api_key=resolved_key)
-                    msg = client.messages.create(
-                        model="claude-opus-4-6",
+                    text = llm_client.chat(
+                        prompt,
+                        api_key=resolved_key,
+                        model_backend=model_backend,
+                        claude_model="claude-opus-4-6",
                         max_tokens=900,
-                        messages=[{"role": "user", "content": prompt}],
                     )
-                    st.markdown(msg.content[0].text)
+                    st.markdown(text)
                 except Exception as e:
                     st.error(f"API error: {e}")
