@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Social Media Dashboard — Loomly Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --card: #21253a;
+    --border: #2e3250;
+    --text: #e8eaf0;
+    --muted: #7b82a0;
+    --fb: #1877f2;
+    --ig: #e1306c;
+    --li: #0a66c2;
+    --accent: #6c8ef5;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 32px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 20px; font-weight: 700; letter-spacing: -.3px; }
+  header span { font-size: 13px; color: var(--muted); }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+
+  .controls { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 32px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .controls label { font-size: 13px; color: var(--muted); }
+  .controls select, .controls input[type=date] { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; outline: none; }
+  .controls select:focus, .controls input:focus { border-color: var(--accent); }
+  .platform-btns { display: flex; gap: 6px; margin-left: auto; }
+  .platform-btns button { padding: 6px 16px; border-radius: 20px; border: 2px solid transparent; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+  .platform-btns button.fb { background: #1877f211; color: var(--fb); border-color: var(--fb); }
+  .platform-btns button.ig { background: #e1306c11; color: var(--ig); border-color: var(--ig); }
+  .platform-btns button.li { background: #0a66c211; color: var(--li); border-color: var(--li); }
+  .platform-btns button.all { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .platform-btns button.inactive { opacity: 0.35; }
+
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* KPI row */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 8px; }
+  .kpi-value { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .kpi.fb .kpi-value { color: var(--fb); }
+  .kpi.ig .kpi-value { color: var(--ig); }
+  .kpi.li .kpi-value { color: var(--li); }
+  .kpi.total .kpi-value { color: var(--accent); }
+  .kpi.eng .kpi-value { color: var(--green); }
+
+  /* Charts */
+  .chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .chart-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 18px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px; }
+  .card h2 { font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 18px; }
+  .chart-wrap { position: relative; }
+  .chart-wrap canvas { display: block; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { text-align: left; padding: 10px 14px; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--border); }
+  tbody tr { border-bottom: 1px solid #1e2235; transition: background .1s; }
+  tbody tr:hover { background: #ffffff08; }
+  tbody td { padding: 10px 14px; color: var(--text); }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge.fb { background: #1877f222; color: var(--fb); }
+  .badge.ig { background: #e1306c22; color: var(--ig); }
+  .badge.li { background: #0a66c222; color: var(--li); }
+  .badge.fmt { background: #6c8ef522; color: var(--accent); }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    main { padding: 18px 16px; }
+    .chart-grid, .chart-grid-3, .chart-grid-2 { grid-template-columns: 1fr; }
+    .controls { padding: 12px 16px; }
+    header { padding: 14px 16px; }
+    .platform-btns { margin-left: 0; }
+  }
+
+  .section-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 14px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <h1>Social Media Analytics</h1>
+  </div>
+  <span id="date-range">Dec 2025 – Mar 2026</span>
+</header>
+
+<div class="controls">
+  <label>From</label>
+  <input type="date" id="date-from" value="2025-12-01"/>
+  <label>To</label>
+  <input type="date" id="date-to" value="2026-03-31"/>
+  <label>Metric</label>
+  <select id="metric-select">
+    <option value="IMPRESSIONS">Impressions</option>
+    <option value="REACTIONS">Reactions / Likes</option>
+    <option value="COMMENTS">Comments</option>
+    <option value="CLICKS">Clicks</option>
+    <option value="SHARES">Shares</option>
+    <option value="ENGAGEMENT-RATE">Engagement Rate (%)</option>
+  </select>
+  <div class="platform-btns">
+    <button class="all" onclick="setFilter('all')">All</button>
+    <button class="fb" onclick="setFilter('facebook')">Facebook</button>
+    <button class="ig" onclick="setFilter('instagram')">Instagram</button>
+    <button class="li" onclick="setFilter('linkedin')">LinkedIn</button>
+  </div>
+</div>
+
+<main>
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <p class="section-title">Impressions Over Time</p>
+  <div class="chart-grid" style="margin-bottom:18px;">
+    <div class="card">
+      <h2>Impressions Over Time</h2>
+      <div class="chart-wrap"><canvas id="chartTimeline" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>Total Impressions by Platform</h2>
+      <div class="chart-wrap"><canvas id="chartDonut" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <p class="section-title">Engagement</p>
+  <div class="chart-grid-2" style="margin-bottom:18px;">
+    <div class="card">
+      <h2>Reactions / Likes by Platform</h2>
+      <div class="chart-wrap"><canvas id="chartReactions" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>LinkedIn Engagement Rate Over Time (%)</h2>
+      <div class="chart-wrap"><canvas id="chartEngRate" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <p class="section-title">Content Format Breakdown</p>
+  <div class="chart-grid-3" style="margin-bottom:28px;">
+    <div class="card">
+      <h2>📘 Facebook — Posts by Format</h2>
+      <div class="chart-wrap"><canvas id="chartFBFmt" height="220"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>📸 Instagram — Posts by Format</h2>
+      <div class="chart-wrap"><canvas id="chartIGFmt" height="220"></canvas></div>
+    </div>
+    <div class="card">
+      <h2>💼 LinkedIn — Posts by Format</h2>
+      <div class="chart-wrap"><canvas id="chartLIFmt" height="220"></canvas></div>
+    </div>
+  </div>
+
+  <p class="section-title">Post Log</p>
+  <div class="card">
+    <h2>All Posts</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Platform</th>
+            <th>Format</th>
+            <th>Impressions</th>
+            <th>Reactions/Likes</th>
+            <th>Comments</th>
+            <th>Clicks/Shares</th>
+            <th>Eng. Rate</th>
+          </tr>
+        </thead>
+        <tbody id="post-table"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Embedded data ──────────────────────────────────────────────
+const RAW = {"facebook": [{"DATE": "2025-12-02", "FORMAT": "Image", "IMPRESSIONS": 0.0, "REACTIONS": 0.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-04", "FORMAT": "Image", "IMPRESSIONS": 12.0, "REACTIONS": 0.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-05", "FORMAT": "Simple Status", "IMPRESSIONS": 6.0, "REACTIONS": 0.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-09", "FORMAT": "Image", "IMPRESSIONS": 5.0, "REACTIONS": 0.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-11", "FORMAT": "Image", "IMPRESSIONS": 14.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-16", "FORMAT": "Image", "IMPRESSIONS": 4.0, "REACTIONS": 0.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-18", "FORMAT": "Image", "IMPRESSIONS": 6.0, "REACTIONS": 0.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-23", "FORMAT": "Image", "IMPRESSIONS": 8.0, "REACTIONS": 0.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-25", "FORMAT": "Image", "IMPRESSIONS": 8.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2025-12-30", "FORMAT": "Image", "IMPRESSIONS": 12.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 1.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-01", "FORMAT": "Image", "IMPRESSIONS": 13.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 1.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-06", "FORMAT": "Image", "IMPRESSIONS": 15.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-08", "FORMAT": "Image", "IMPRESSIONS": 28.0, "REACTIONS": 2.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 1.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-13", "FORMAT": "Image", "IMPRESSIONS": 11.0, "REACTIONS": 2.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-15", "FORMAT": "Image", "IMPRESSIONS": 20.0, "REACTIONS": 2.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 1.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-20", "FORMAT": "Image", "IMPRESSIONS": 21.0, "REACTIONS": 2.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-22", "FORMAT": "Image", "IMPRESSIONS": 32.0, "REACTIONS": 3.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 2.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-27", "FORMAT": "Image", "IMPRESSIONS": 628.0, "REACTIONS": 49.0, "COMMENTS": 1.0, "SHARES": 1.0, "CLICKS": 57.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-01-29", "FORMAT": "Image", "IMPRESSIONS": 18.0, "REACTIONS": 3.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-02", "FORMAT": "Image", "IMPRESSIONS": 16.0, "REACTIONS": 3.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 1.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-06", "FORMAT": "Image", "IMPRESSIONS": 13.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-09", "FORMAT": "Multi-Image", "IMPRESSIONS": 16.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-11", "FORMAT": "Video", "IMPRESSIONS": 10.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 2.0}, {"DATE": "2026-02-14", "FORMAT": "Image", "IMPRESSIONS": 22.0, "REACTIONS": 2.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 1.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-18", "FORMAT": "Image", "IMPRESSIONS": 14.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 2.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-20", "FORMAT": "Image", "IMPRESSIONS": 21.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 2.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-23", "FORMAT": "Video", "IMPRESSIONS": 8.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 1.0}, {"DATE": "2026-02-25", "FORMAT": "Image", "IMPRESSIONS": 10.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-25", "FORMAT": "Image", "IMPRESSIONS": 8.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-02-27", "FORMAT": "Image", "IMPRESSIONS": 11.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 2.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-02", "FORMAT": "Video", "IMPRESSIONS": 12.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 2.0, "VIDEO-VIEWS": 5.0}, {"DATE": "2026-03-04", "FORMAT": "Image", "IMPRESSIONS": 23.0, "REACTIONS": 3.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-06", "FORMAT": "Link", "IMPRESSIONS": 12.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 1.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-09", "FORMAT": "Image", "IMPRESSIONS": 17.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 2.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-13", "FORMAT": "Image", "IMPRESSIONS": 9.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-16", "FORMAT": "Image", "IMPRESSIONS": 9.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-18", "FORMAT": "Image", "IMPRESSIONS": 15.0, "REACTIONS": 2.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 1.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-20", "FORMAT": "Link", "IMPRESSIONS": 15.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-20", "FORMAT": "Image", "IMPRESSIONS": 7.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-23", "FORMAT": "Video", "IMPRESSIONS": 9.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 3.0}, {"DATE": "2026-03-25", "FORMAT": "Link", "IMPRESSIONS": 8.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}, {"DATE": "2026-03-27", "FORMAT": "Image", "IMPRESSIONS": 9.0, "REACTIONS": 1.0, "COMMENTS": 0.0, "SHARES": 0.0, "CLICKS": 0.0, "VIDEO-VIEWS": 0.0}], "instagram": [{"DATE": "2025-12-02", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 19, "REACH": 8, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 37.5, "SAVES": 0.0, "REELS-PLAYS": 19}, {"DATE": "2025-12-07", "FORMAT": "Image", "LIKES": 2.0, "COMMENTS": 0.0, "IMPRESSIONS": 14, "REACH": 4, "ENGAGEMENT": 2.0, "ENGAGEMENT-RATE": 50.0, "SAVES": 0.0, "REELS-PLAYS": 14}, {"DATE": "2025-12-07", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 12, "REACH": 4, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 75.0, "SAVES": 0.0, "REELS-PLAYS": 12}, {"DATE": "2025-12-10", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 21, "REACH": 7, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 42.86, "SAVES": 0.0, "REELS-PLAYS": 21}, {"DATE": "2025-12-12", "FORMAT": "Image", "LIKES": 5.0, "COMMENTS": 0.0, "IMPRESSIONS": 24, "REACH": 9, "ENGAGEMENT": 5.0, "ENGAGEMENT-RATE": 55.56, "SAVES": 0.0, "REELS-PLAYS": 24}, {"DATE": "2025-12-21", "FORMAT": "Image", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 24, "REACH": 8, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 50.0, "SAVES": 0.0, "REELS-PLAYS": 24}, {"DATE": "2025-12-21", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 14, "REACH": 5, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 60.0, "SAVES": 0.0, "REELS-PLAYS": 14}, {"DATE": "2025-12-23", "FORMAT": "Image", "LIKES": 5.0, "COMMENTS": 0.0, "IMPRESSIONS": 27, "REACH": 11, "ENGAGEMENT": 5.0, "ENGAGEMENT-RATE": 45.45, "SAVES": 0.0, "REELS-PLAYS": 27}, {"DATE": "2025-12-25", "FORMAT": "Image", "LIKES": 2.0, "COMMENTS": 0.0, "IMPRESSIONS": 16, "REACH": 7, "ENGAGEMENT": 2.0, "ENGAGEMENT-RATE": 28.57, "SAVES": 0.0, "REELS-PLAYS": 16}, {"DATE": "2025-12-30", "FORMAT": "Image", "LIKES": 5.0, "COMMENTS": 0.0, "IMPRESSIONS": 16, "REACH": 9, "ENGAGEMENT": 5.0, "ENGAGEMENT-RATE": 55.56, "SAVES": 0.0, "REELS-PLAYS": 16}, {"DATE": "2026-01-01", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 18, "REACH": 7, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 42.86, "SAVES": 0.0, "REELS-PLAYS": 18}, {"DATE": "2026-01-06", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 17, "REACH": 8, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 37.5, "SAVES": 0.0, "REELS-PLAYS": 17}, {"DATE": "2026-01-08", "FORMAT": "Image", "LIKES": 5.0, "COMMENTS": 0.0, "IMPRESSIONS": 22, "REACH": 8, "ENGAGEMENT": 5.0, "ENGAGEMENT-RATE": 62.5, "SAVES": 0.0, "REELS-PLAYS": 22}, {"DATE": "2026-01-13", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 13, "REACH": 8, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 37.5, "SAVES": 0.0, "REELS-PLAYS": 13}, {"DATE": "2026-01-15", "FORMAT": "Image", "LIKES": 5.0, "COMMENTS": 0.0, "IMPRESSIONS": 18, "REACH": 9, "ENGAGEMENT": 5.0, "ENGAGEMENT-RATE": 55.56, "SAVES": 0.0, "REELS-PLAYS": 18}, {"DATE": "2026-01-20", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 23, "REACH": 13, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 23.08, "SAVES": 0.0, "REELS-PLAYS": 23}, {"DATE": "2026-01-22", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 28, "REACH": 12, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 25.0, "SAVES": 0.0, "REELS-PLAYS": 28}, {"DATE": "2026-01-27", "FORMAT": "Carousel", "LIKES": 6.0, "COMMENTS": 0.0, "IMPRESSIONS": 49, "REACH": 18, "ENGAGEMENT": 6.0, "ENGAGEMENT-RATE": 33.33, "SAVES": 0.0, "REELS-PLAYS": 49}, {"DATE": "2026-01-29", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 22, "REACH": 11, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 27.27, "SAVES": 0.0, "REELS-PLAYS": 22}, {"DATE": "2026-02-02", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 24, "REACH": 10, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 30.0, "SAVES": 0.0, "REELS-PLAYS": 24}, {"DATE": "2026-02-06", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 18, "REACH": 10, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 30.0, "SAVES": 0.0, "REELS-PLAYS": 18}, {"DATE": "2026-02-09", "FORMAT": "Carousel", "LIKES": 7.0, "COMMENTS": 2.0, "IMPRESSIONS": 32, "REACH": 15, "ENGAGEMENT": 9.0, "ENGAGEMENT-RATE": 60.0, "SAVES": 0.0, "REELS-PLAYS": 32}, {"DATE": "2026-02-11", "FORMAT": "Video", "LIKES": 5.0, "COMMENTS": 0.0, "IMPRESSIONS": 281, "REACH": 241, "ENGAGEMENT": 5.0, "ENGAGEMENT-RATE": 2.07, "SAVES": 0.0, "REELS-PLAYS": 281}, {"DATE": "2026-02-14", "FORMAT": "Image", "LIKES": 6.0, "COMMENTS": 0.0, "IMPRESSIONS": 34, "REACH": 17, "ENGAGEMENT": 6.0, "ENGAGEMENT-RATE": 35.29, "SAVES": 0.0, "REELS-PLAYS": 34}, {"DATE": "2026-02-18", "FORMAT": "Image", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 24, "REACH": 14, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 28.57, "SAVES": 0.0, "REELS-PLAYS": 24}, {"DATE": "2026-02-20", "FORMAT": "Image", "LIKES": 8.0, "COMMENTS": 0.0, "IMPRESSIONS": 23, "REACH": 12, "ENGAGEMENT": 8.0, "ENGAGEMENT-RATE": 66.67, "SAVES": 0.0, "REELS-PLAYS": 23}, {"DATE": "2026-02-23", "FORMAT": "Video", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 32, "REACH": 22, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 13.64, "SAVES": 0.0, "REELS-PLAYS": 32}, {"DATE": "2026-02-25", "FORMAT": "Image", "LIKES": 6.0, "COMMENTS": 0.0, "IMPRESSIONS": 22, "REACH": 14, "ENGAGEMENT": 6.0, "ENGAGEMENT-RATE": 42.86, "SAVES": 0.0, "REELS-PLAYS": 22}, {"DATE": "2026-02-27", "FORMAT": "Image", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 10, "REACH": 9, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 44.44, "SAVES": 0.0, "REELS-PLAYS": 10}, {"DATE": "2026-03-02", "FORMAT": "Video", "LIKES": 6.0, "COMMENTS": 0.0, "IMPRESSIONS": 231, "REACH": 209, "ENGAGEMENT": 6.0, "ENGAGEMENT-RATE": 2.87, "SAVES": 0.0, "REELS-PLAYS": 231}, {"DATE": "2026-03-04", "FORMAT": "Image", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 15, "REACH": 10, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 40.0, "SAVES": 0.0, "REELS-PLAYS": 15}, {"DATE": "2026-03-06", "FORMAT": "Image", "LIKES": 6.0, "COMMENTS": 0.0, "IMPRESSIONS": 21, "REACH": 12, "ENGAGEMENT": 6.0, "ENGAGEMENT-RATE": 50.0, "SAVES": 0.0, "REELS-PLAYS": 21}, {"DATE": "2026-03-09", "FORMAT": "Image", "LIKES": 2.0, "COMMENTS": 0.0, "IMPRESSIONS": 13, "REACH": 7, "ENGAGEMENT": 2.0, "ENGAGEMENT-RATE": 28.57, "SAVES": 0.0, "REELS-PLAYS": 13}, {"DATE": "2026-03-13", "FORMAT": "Image", "LIKES": 5.0, "COMMENTS": 0.0, "IMPRESSIONS": 24, "REACH": 8, "ENGAGEMENT": 5.0, "ENGAGEMENT-RATE": 62.5, "SAVES": 0.0, "REELS-PLAYS": 24}, {"DATE": "2026-03-16", "FORMAT": "Image", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 16, "REACH": 8, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 50.0, "SAVES": 0.0, "REELS-PLAYS": 16}, {"DATE": "2026-03-18", "FORMAT": "Image", "LIKES": 8.0, "COMMENTS": 1.0, "IMPRESSIONS": 31, "REACH": 14, "ENGAGEMENT": 9.0, "ENGAGEMENT-RATE": 64.29, "SAVES": 0.0, "REELS-PLAYS": 31}, {"DATE": "2026-03-20", "FORMAT": "Image", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 17, "REACH": 9, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 44.44, "SAVES": 0.0, "REELS-PLAYS": 17}, {"DATE": "2026-03-20", "FORMAT": "Image", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 17, "REACH": 9, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 44.44, "SAVES": 0.0, "REELS-PLAYS": 17}, {"DATE": "2026-03-23", "FORMAT": "Video", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 1408, "REACH": 1026, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 0.39, "SAVES": 0.0, "REELS-PLAYS": 1408}, {"DATE": "2026-03-25", "FORMAT": "Image", "LIKES": 3.0, "COMMENTS": 0.0, "IMPRESSIONS": 15, "REACH": 6, "ENGAGEMENT": 3.0, "ENGAGEMENT-RATE": 50.0, "SAVES": 0.0, "REELS-PLAYS": 15}, {"DATE": "2026-03-27", "FORMAT": "Image", "LIKES": 4.0, "COMMENTS": 0.0, "IMPRESSIONS": 19, "REACH": 6, "ENGAGEMENT": 4.0, "ENGAGEMENT-RATE": 66.67, "SAVES": 0.0, "REELS-PLAYS": 19}], "linkedin": [{"DATE": "2025-12-02", "FORMAT": "Link", "SHARES": 0.0, "CLICKS": 0.0, "ENGAGEMENT-RATE": 66.67, "REACTIONS": 2.0, "IMPRESSIONS": 3, "COMMENTS": 0.0}, {"DATE": "2025-12-04", "FORMAT": "Link", "SHARES": 0.0, "CLICKS": 3.0, "ENGAGEMENT-RATE": 5.07, "REACTIONS": 4.0, "IMPRESSIONS": 138, "COMMENTS": 0.0}, {"DATE": "2025-12-09", "FORMAT": "Image", "SHARES": 2.0, "CLICKS": 104.0, "ENGAGEMENT-RATE": 9.82, "REACTIONS": 55.0, "IMPRESSIONS": 1690, "COMMENTS": 5.0}, {"DATE": "2025-12-11", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 155.0, "ENGAGEMENT-RATE": 11.37, "REACTIONS": 85.0, "IMPRESSIONS": 2198, "COMMENTS": 9.0}, {"DATE": "2025-12-16", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 1.0, "ENGAGEMENT-RATE": 8.33, "REACTIONS": 8.0, "IMPRESSIONS": 108, "COMMENTS": 0.0}, {"DATE": "2025-12-18", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 2.0, "ENGAGEMENT-RATE": 8.24, "REACTIONS": 5.0, "IMPRESSIONS": 85, "COMMENTS": 0.0}, {"DATE": "2025-12-23", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 9.0, "ENGAGEMENT-RATE": 10.03, "REACTIONS": 27.0, "IMPRESSIONS": 369, "COMMENTS": 1.0}, {"DATE": "2025-12-25", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 10.0, "ENGAGEMENT-RATE": 8.45, "REACTIONS": 11.0, "IMPRESSIONS": 284, "COMMENTS": 2.0}, {"DATE": "2025-12-26", "FORMAT": "Simple Status", "SHARES": 3.0, "CLICKS": 6.0, "ENGAGEMENT-RATE": 6.02, "REACTIONS": 7.0, "IMPRESSIONS": 266, "COMMENTS": 0.0}, {"DATE": "2025-12-30", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 2.0, "ENGAGEMENT-RATE": 12.4, "REACTIONS": 12.0, "IMPRESSIONS": 129, "COMMENTS": 1.0}, {"DATE": "2026-01-01", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 5.0, "ENGAGEMENT-RATE": 9.6, "REACTIONS": 12.0, "IMPRESSIONS": 198, "COMMENTS": 1.0}, {"DATE": "2026-01-06", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 9.0, "ENGAGEMENT-RATE": 9.91, "REACTIONS": 10.0, "IMPRESSIONS": 212, "COMMENTS": 1.0}, {"DATE": "2026-01-08", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 2.0, "ENGAGEMENT-RATE": 10.33, "REACTIONS": 17.0, "IMPRESSIONS": 213, "COMMENTS": 2.0}, {"DATE": "2026-01-13", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 2.0, "ENGAGEMENT-RATE": 7.95, "REACTIONS": 5.0, "IMPRESSIONS": 88, "COMMENTS": 0.0}, {"DATE": "2026-01-15", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 10.0, "ENGAGEMENT-RATE": 8.33, "REACTIONS": 18.0, "IMPRESSIONS": 360, "COMMENTS": 1.0}, {"DATE": "2026-01-20", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 21.0, "ENGAGEMENT-RATE": 11.5, "REACTIONS": 13.0, "IMPRESSIONS": 313, "COMMENTS": 1.0}, {"DATE": "2026-01-22", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 3.0, "ENGAGEMENT-RATE": 9.16, "REACTIONS": 8.0, "IMPRESSIONS": 131, "COMMENTS": 0.0}, {"DATE": "2026-01-27", "FORMAT": "Image", "SHARES": 5.0, "CLICKS": 35.0, "ENGAGEMENT-RATE": 12.89, "REACTIONS": 27.0, "IMPRESSIONS": 543, "COMMENTS": 3.0}, {"DATE": "2026-01-29", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 9.0, "ENGAGEMENT-RATE": 10.67, "REACTIONS": 7.0, "IMPRESSIONS": 178, "COMMENTS": 2.0}, {"DATE": "2026-01-30", "FORMAT": "Simple Status", "SHARES": 0.0, "CLICKS": 1.0, "ENGAGEMENT-RATE": 1.85, "REACTIONS": 0.0, "IMPRESSIONS": 54, "COMMENTS": 0.0}, {"DATE": "2026-02-02", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 7.0, "ENGAGEMENT-RATE": 12.9, "REACTIONS": 16.0, "IMPRESSIONS": 217, "COMMENTS": 4.0}, {"DATE": "2026-02-04", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 2.0, "ENGAGEMENT-RATE": 10.68, "REACTIONS": 9.0, "IMPRESSIONS": 103, "COMMENTS": 0.0}, {"DATE": "2026-02-06", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 5.0, "ENGAGEMENT-RATE": 14.29, "REACTIONS": 11.0, "IMPRESSIONS": 119, "COMMENTS": 0.0}, {"DATE": "2026-02-09", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 30.0, "ENGAGEMENT-RATE": 9.96, "REACTIONS": 23.0, "IMPRESSIONS": 562, "COMMENTS": 2.0}, {"DATE": "2026-02-11", "FORMAT": "Link", "SHARES": 0.0, "CLICKS": 1.0, "ENGAGEMENT-RATE": 7.14, "REACTIONS": 6.0, "IMPRESSIONS": 98, "COMMENTS": 0.0}, {"DATE": "2026-02-14", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 9.0, "ENGAGEMENT-RATE": 17.65, "REACTIONS": 15.0, "IMPRESSIONS": 136, "COMMENTS": 0.0}, {"DATE": "2026-02-16", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 4.0, "ENGAGEMENT-RATE": 13.44, "REACTIONS": 12.0, "IMPRESSIONS": 119, "COMMENTS": 0.0}, {"DATE": "2026-02-18", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 100.0, "ENGAGEMENT-RATE": 9.21, "REACTIONS": 145.0, "IMPRESSIONS": 2855, "COMMENTS": 18.0}, {"DATE": "2026-02-20", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 11.0, "ENGAGEMENT-RATE": 10.54, "REACTIONS": 20.0, "IMPRESSIONS": 294, "COMMENTS": 0.0}, {"DATE": "2026-02-23", "FORMAT": "Video", "SHARES": 0.0, "CLICKS": 4.0, "ENGAGEMENT-RATE": 8.33, "REACTIONS": 6.0, "IMPRESSIONS": 120, "COMMENTS": 0.0}, {"DATE": "2026-02-25", "FORMAT": "Image", "SHARES": 4.0, "CLICKS": 5.0, "ENGAGEMENT-RATE": 10.6, "REACTIONS": 11.0, "IMPRESSIONS": 217, "COMMENTS": 3.0}, {"DATE": "2026-02-27", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 2.0, "ENGAGEMENT-RATE": 7.87, "REACTIONS": 11.0, "IMPRESSIONS": 178, "COMMENTS": 0.0}, {"DATE": "2026-03-02", "FORMAT": "Video", "SHARES": 0.0, "CLICKS": 14.0, "ENGAGEMENT-RATE": 9.78, "REACTIONS": 16.0, "IMPRESSIONS": 317, "COMMENTS": 1.0}, {"DATE": "2026-03-04", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 9.0, "ENGAGEMENT-RATE": 6.92, "REACTIONS": 19.0, "IMPRESSIONS": 448, "COMMENTS": 2.0}, {"DATE": "2026-03-06", "FORMAT": "Link", "SHARES": 0.0, "CLICKS": 2.0, "ENGAGEMENT-RATE": 5.88, "REACTIONS": 11.0, "IMPRESSIONS": 221, "COMMENTS": 0.0}, {"DATE": "2026-03-09", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 5.0, "ENGAGEMENT-RATE": 8.74, "REACTIONS": 11.0, "IMPRESSIONS": 183, "COMMENTS": 0.0}, {"DATE": "2026-03-13", "FORMAT": "Image", "SHARES": 2.0, "CLICKS": 6.0, "ENGAGEMENT-RATE": 10.62, "REACTIONS": 11.0, "IMPRESSIONS": 179, "COMMENTS": 0.0}, {"DATE": "2026-03-16", "FORMAT": "Image", "SHARES": 0.0, "CLICKS": 0.0, "ENGAGEMENT-RATE": 6.17, "REACTIONS": 5.0, "IMPRESSIONS": 81, "COMMENTS": 0.0}, {"DATE": "2026-03-18", "FORMAT": "Image", "SHARES": 5.0, "CLICKS": 28.0, "ENGAGEMENT-RATE": 12.63, "REACTIONS": 57.0, "IMPRESSIONS": 792, "COMMENTS": 10.0}, {"DATE": "2026-03-20", "FORMAT": "Link", "SHARES": 3.0, "CLICKS": 17.0, "ENGAGEMENT-RATE": 19.29, "REACTIONS": 6.0, "IMPRESSIONS": 140, "COMMENTS": 1.0}, {"DATE": "2026-03-20", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 3.0, "ENGAGEMENT-RATE": 7.58, "REACTIONS": 6.0, "IMPRESSIONS": 132, "COMMENTS": 0.0}, {"DATE": "2026-03-21", "FORMAT": "Simple Status", "SHARES": 0.0, "CLICKS": 0.0, "ENGAGEMENT-RATE": 2.63, "REACTIONS": 1.0, "IMPRESSIONS": 38, "COMMENTS": 0.0}, {"DATE": "2026-03-23", "FORMAT": "Video", "SHARES": 1.0, "CLICKS": 3.0, "ENGAGEMENT-RATE": 9.09, "REACTIONS": 6.0, "IMPRESSIONS": 110, "COMMENTS": 0.0}, {"DATE": "2026-03-25", "FORMAT": "Link", "SHARES": 3.0, "CLICKS": 1.0, "ENGAGEMENT-RATE": 10.62, "REACTIONS": 6.0, "IMPRESSIONS": 113, "COMMENTS": 2.0}, {"DATE": "2026-03-27", "FORMAT": "Image", "SHARES": 1.0, "CLICKS": 12.0, "ENGAGEMENT-RATE": 9.66, "REACTIONS": 15.0, "IMPRESSIONS": 290, "COMMENTS": 0.0}]};
+
+// ── Chart registry ──────────────────────────────────────────────
+const charts = {};
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+// ── Helpers ──────────────────────────────────────────────────────
+const fmt = n => n == null ? '—' : n % 1 === 0 ? n.toLocaleString() : n.toFixed(1);
+const sum = (arr, key) => arr.reduce((a,r) => a + (r[key]||0), 0);
+
+const GRID = { color: '#1e2235' };
+const TICK = { color: '#7b82a0', font: { size: 11 } };
+const baseOpts = (yLabel='') => ({
+  responsive: true, maintainAspectRatio: true,
+  plugins: { legend: { labels: { color: '#7b82a0', font: { size: 12 }, boxWidth: 12 } }, tooltip: { backgroundColor: '#1a1d27', borderColor: '#2e3250', borderWidth: 1, titleColor: '#e8eaf0', bodyColor: '#9aa0be' } },
+  scales: { x: { grid: GRID, ticks: { ...TICK, maxRotation: 45 } }, y: { grid: GRID, ticks: TICK, beginAtZero: true, title: { display: !!yLabel, text: yLabel, color: '#7b82a0', font: { size: 11 } } } }
+});
+
+// ── State ──────────────────────────────────────────────────────
+let activePlatform = 'all';
+
+function getDateRange() {
+  return { from: document.getElementById('date-from').value, to: document.getElementById('date-to').value };
+}
+
+function filterData(platform) {
+  const { from, to } = getDateRange();
+  const filter = rows => rows.filter(r => r.DATE >= from && r.DATE <= to);
+  if (platform === 'facebook') return { fb: filter(RAW.facebook), ig: [], li: [] };
+  if (platform === 'instagram') return { fb: [], ig: filter(RAW.instagram), li: [] };
+  if (platform === 'linkedin') return { fb: [], ig: [], li: filter(RAW.linkedin) };
+  return { fb: filter(RAW.facebook), ig: filter(RAW.instagram), li: filter(RAW.linkedin) };
+}
+
+// ── KPIs ──────────────────────────────────────────────────────
+function buildKPIs(fb, ig, li) {
+  const totalImpr = sum(fb,'IMPRESSIONS') + sum(ig,'IMPRESSIONS') + sum(li,'IMPRESSIONS');
+  const liEngRate = li.length ? (li.reduce((a,r)=>a+(r['ENGAGEMENT-RATE']||0),0)/li.length) : 0;
+  const igEngRate = ig.length ? (ig.reduce((a,r)=>a+(r['ENGAGEMENT-RATE']||0),0)/ig.length) : 0;
+  const fbPosts = fb.length, igPosts = ig.length, liPosts = li.length;
+
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi total"><div class="kpi-label">Total Impressions</div><div class="kpi-value">${fmt(totalImpr)}</div><div class="kpi-sub">All platforms</div></div>
+    <div class="kpi fb"><div class="kpi-label">Facebook Impressions</div><div class="kpi-value">${fmt(sum(fb,'IMPRESSIONS'))}</div><div class="kpi-sub">${fbPosts} posts</div></div>
+    <div class="kpi ig"><div class="kpi-label">Instagram Impressions</div><div class="kpi-value">${fmt(sum(ig,'IMPRESSIONS'))}</div><div class="kpi-sub">${igPosts} posts</div></div>
+    <div class="kpi li"><div class="kpi-label">LinkedIn Impressions</div><div class="kpi-value">${fmt(sum(li,'IMPRESSIONS'))}</div><div class="kpi-sub">${liPosts} posts</div></div>
+    <div class="kpi eng"><div class="kpi-label">Avg LI Eng. Rate</div><div class="kpi-value">${liEngRate.toFixed(1)}%</div><div class="kpi-sub">LinkedIn avg</div></div>
+    <div class="kpi ig"><div class="kpi-label">Avg IG Eng. Rate</div><div class="kpi-value">${igEngRate.toFixed(1)}%</div><div class="kpi-sub">Instagram avg</div></div>
+  `;
+}
+
+// ── Timeline chart ──────────────────────────────────────────────
+function buildTimeline(fb, ig, li) {
+  destroyChart('timeline');
+  const allDates = [...new Set([...fb,...ig,...li].map(r=>r.DATE))].sort();
+  const agg = (rows, key) => allDates.map(d => rows.filter(r=>r.DATE===d).reduce((a,r)=>a+(r[key]||0),0));
+  const datasets = [];
+  if (fb.length) datasets.push({ label:'Facebook', data: agg(fb,'IMPRESSIONS'), borderColor:'#1877f2', backgroundColor:'#1877f218', fill:true, tension:.3, pointRadius:3 });
+  if (ig.length) datasets.push({ label:'Instagram', data: agg(ig,'IMPRESSIONS'), borderColor:'#e1306c', backgroundColor:'#e1306c18', fill:true, tension:.3, pointRadius:3 });
+  if (li.length) datasets.push({ label:'LinkedIn', data: agg(li,'IMPRESSIONS'), borderColor:'#0a66c2', backgroundColor:'#0a66c218', fill:true, tension:.3, pointRadius:3 });
+  const ctx = document.getElementById('chartTimeline').getContext('2d');
+  charts.timeline = new Chart(ctx, { type:'line', data:{ labels: allDates.map(d=>d.slice(5)), datasets }, options: baseOpts('Impressions') });
+}
+
+// ── Donut ──────────────────────────────────────────────────────
+function buildDonut(fb, ig, li) {
+  destroyChart('donut');
+  const fbI = sum(fb,'IMPRESSIONS'), igI = sum(ig,'IMPRESSIONS'), liI = sum(li,'IMPRESSIONS');
+  const labels=[], data=[], colors=[];
+  if (fbI>0) { labels.push('Facebook'); data.push(fbI); colors.push('#1877f2'); }
+  if (igI>0) { labels.push('Instagram'); data.push(igI); colors.push('#e1306c'); }
+  if (liI>0) { labels.push('LinkedIn'); data.push(liI); colors.push('#0a66c2'); }
+  const ctx = document.getElementById('chartDonut').getContext('2d');
+  charts.donut = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor: colors, borderColor:'#21253a', borderWidth:3 }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{ position:'bottom', labels:{ color:'#7b82a0', font:{size:12}, boxWidth:12 } }, tooltip:{ backgroundColor:'#1a1d27', borderColor:'#2e3250', borderWidth:1, titleColor:'#e8eaf0', bodyColor:'#9aa0be' } } } });
+}
+
+// ── Reactions bar ──────────────────────────────────────────────
+function buildReactions(fb, ig, li) {
+  destroyChart('reactions');
+  const allDates = [...new Set([...fb,...ig,...li].map(r=>r.DATE))].sort();
+  const monthMap = {};
+  [...fb.map(r=>({...r,_p:'fb'})), ...ig.map(r=>({...r,_p:'ig'})), ...li.map(r=>({...r,_p:'li'}))].forEach(r => {
+    const m = r.DATE.slice(0,7);
+    if (!monthMap[m]) monthMap[m] = {fb:0,ig:0,li:0};
+    if (r._p==='fb') monthMap[m].fb += r.REACTIONS||0;
+    if (r._p==='ig') monthMap[m].ig += r.LIKES||0;
+    if (r._p==='li') monthMap[m].li += r.REACTIONS||0;
+  });
+  const months = Object.keys(monthMap).sort();
+  const opts = { ...baseOpts('Reactions / Likes'), scales:{ x:{ stacked:false, grid:GRID, ticks:TICK }, y:{ stacked:false, grid:GRID, ticks:TICK, beginAtZero:true } } };
+  const datasets = [];
+  if (fb.length) datasets.push({ label:'Facebook', data: months.map(m=>monthMap[m].fb), backgroundColor:'#1877f2aa' });
+  if (ig.length) datasets.push({ label:'Instagram', data: months.map(m=>monthMap[m].ig), backgroundColor:'#e1306caa' });
+  if (li.length) datasets.push({ label:'LinkedIn', data: months.map(m=>monthMap[m].li), backgroundColor:'#0a66c2aa' });
+  const ctx = document.getElementById('chartReactions').getContext('2d');
+  charts.reactions = new Chart(ctx, { type:'bar', data:{ labels: months, datasets }, options: opts });
+}
+
+// ── Engagement rate trend (LinkedIn only shown if available) ──
+function buildEngRate(fb, ig, li) {
+  destroyChart('engrate');
+  const ctx = document.getElementById('chartEngRate').getContext('2d');
+  const datasets = [];
+  if (li.length) {
+    const liSorted = [...li].sort((a,b)=>a.DATE.localeCompare(b.DATE));
+    datasets.push({ label:'LinkedIn', data: liSorted.map(r=>r['ENGAGEMENT-RATE']), borderColor:'#0a66c2', backgroundColor:'#0a66c218', fill:true, tension:.3, pointRadius:2 });
+  }
+  if (ig.length) {
+    const igSorted = [...ig].sort((a,b)=>a.DATE.localeCompare(b.DATE));
+    datasets.push({ label:'Instagram', data: igSorted.map(r=>r['ENGAGEMENT-RATE']), borderColor:'#e1306c', backgroundColor:'#e1306c18', fill:true, tension:.3, pointRadius:2 });
+  }
+  // use li dates as labels if available, else ig
+  const labels = li.length ? [...li].sort((a,b)=>a.DATE.localeCompare(b.DATE)).map(r=>r.DATE.slice(5))
+                           : [...ig].sort((a,b)=>a.DATE.localeCompare(b.DATE)).map(r=>r.DATE.slice(5));
+  charts.engrate = new Chart(ctx, { type:'line', data:{ labels, datasets }, options: baseOpts('Eng. Rate (%)') });
+}
+
+// ── Format pie charts ──────────────────────────────────────────
+function fmtCounts(rows, key='FORMAT') {
+  const c={};
+  rows.forEach(r=>{ const v=r[key]||'Unknown'; c[v]=(c[v]||0)+1; });
+  return c;
+}
+const PIE_COLORS = ['#6c8ef5','#34d399','#fbbf24','#f87171','#a78bfa','#38bdf8','#fb923c'];
+function buildPie(id, counts) {
+  destroyChart(id);
+  const labels = Object.keys(counts), data = Object.values(counts);
+  const ctx = document.getElementById(id).getContext('2d');
+  charts[id] = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor: PIE_COLORS.slice(0,labels.length), borderColor:'#21253a', borderWidth:3 }] }, options:{ responsive:true, maintainAspectRatio:true, plugins:{ legend:{ position:'bottom', labels:{ color:'#7b82a0', font:{size:11}, boxWidth:10 } }, tooltip:{ backgroundColor:'#1a1d27', borderColor:'#2e3250', borderWidth:1, titleColor:'#e8eaf0', bodyColor:'#9aa0be' } } } });
+}
+
+// ── Table ──────────────────────────────────────────────────────
+function buildTable(fb, ig, li) {
+  const rows = [
+    ...fb.map(r=>({ date:r.DATE, platform:'fb', format:r.FORMAT, impr:r.IMPRESSIONS, react:r.REACTIONS, comments:r.COMMENTS, clicks: r.CLICKS, eng: null })),
+    ...ig.map(r=>({ date:r.DATE, platform:'ig', format:r.FORMAT, impr:r.IMPRESSIONS, react:r.LIKES, comments:r.COMMENTS, clicks: r.SAVES, eng: r['ENGAGEMENT-RATE'] })),
+    ...li.map(r=>({ date:r.DATE, platform:'li', format:r.FORMAT, impr:r.IMPRESSIONS, react:r.REACTIONS, comments:r.COMMENTS, clicks: r.CLICKS, eng: r['ENGAGEMENT-RATE'] })),
+  ].sort((a,b)=>b.date.localeCompare(a.date));
+
+  const pLabel = {fb:'Facebook',ig:'Instagram',li:'LinkedIn'};
+  document.getElementById('post-table').innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.date}</td>
+      <td><span class="badge ${r.platform}">${pLabel[r.platform]}</span></td>
+      <td><span class="badge fmt">${r.format||'—'}</span></td>
+      <td>${fmt(r.impr)}</td>
+      <td>${fmt(r.react)}</td>
+      <td>${fmt(r.comments)}</td>
+      <td>${fmt(r.clicks)}</td>
+      <td>${r.eng != null ? r.eng.toFixed(1)+'%' : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+// ── Master render ─────────────────────────────────────────────
+function render() {
+  const { fb, ig, li } = filterData(activePlatform);
+  buildKPIs(fb, ig, li);
+  buildTimeline(fb, ig, li);
+  buildDonut(fb, ig, li);
+  buildReactions(fb, ig, li);
+  buildEngRate(fb, ig, li);
+  buildPie('chartFBFmt', fmtCounts(fb));
+  buildPie('chartIGFmt', fmtCounts(ig));
+  buildPie('chartLIFmt', fmtCounts(li));
+  buildTable(fb, ig, li);
+}
+
+function setFilter(p) {
+  activePlatform = p;
+  document.querySelectorAll('.platform-btns button').forEach(b => b.classList.toggle('inactive', !b.classList.contains(p==='all'?'all':p)));
+  if (p==='all') document.querySelector('.platform-btns button.all').classList.remove('inactive');
+  render();
+}
+
+document.getElementById('date-from').addEventListener('change', render);
+document.getElementById('date-to').addEventListener('change', render);
+document.getElementById('metric-select').addEventListener('change', render);
+
+render();
+</script>
+</body>
+</html>
