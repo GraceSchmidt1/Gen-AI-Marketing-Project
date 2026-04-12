@@ -142,32 +142,18 @@ def render(df: pd.DataFrame, sidebar_api_key: str, model_backend: str = "claude"
 
         for col, plat in zip(plat_cols, platform_names):
             combos = _top_combos(df, plat, n=3)
-            best_combos_by_platform[plat] = combos
             color = PLATFORM_COLORS.get(plat, C["accent"])
 
             with col:
-                st.markdown(
-                    f'<div style="background:{CARD_BG_SOLID};border:1px solid {color};'
-                    f'border-radius:12px;padding:14px 18px;min-height:160px">',
-                    unsafe_allow_html=True,
-                )
-                st.markdown(
-                    f'<div style="font-size:11px;color:{color};text-transform:uppercase;'
-                    f'font-weight:700;letter-spacing:.7px;margin-bottom:8px">{plat}</div>',
-                    unsafe_allow_html=True,
-                )
+                inner_html = ""
                 if combos.empty:
-                    st.markdown(
-                        f'<div style="color:{C["muted"]};font-size:13px">'
-                        "Not enough tagged data yet.</div>",
-                        unsafe_allow_html=True,
-                    )
+                    inner_html = f'<div style="color:{C["muted"]};font-size:13px">Not enough tagged data yet.</div>'
                 else:
                     for i, row in combos.iterrows():
                         ic = ICP_COLORS.get(row["ICP_Segment"], C["accent"])
                         pc = PILLAR_COLORS.get(row["Content_Pillar"], C["muted"])
-                        rank = "#1" if i == 0 else f"#{i+1}"
-                        st.markdown(
+                        rank = f"#{i+1}"
+                        inner_html += (
                             f'<div style="margin:4px 0;padding:8px 10px;'
                             f'background:rgba(57,122,114,0.08);border-radius:8px">'
                             f'<span style="color:{C["muted"]};font-size:10px">{rank} </span>'
@@ -176,10 +162,19 @@ def render(df: pd.DataFrame, sidebar_api_key: str, model_backend: str = "claude"
                             f'<span style="color:{pc};font-size:11px">{row["Content_Pillar"]}</span>'
                             f'<span style="color:{C["green"]};font-size:11px;float:right">'
                             f'avg {row["Avg_Engagement"]:.0f} eng</span>'
-                            f'</div>',
-                            unsafe_allow_html=True,
+                            f'</div>'
                         )
-                st.markdown("</div>", unsafe_allow_html=True)
+
+                st.markdown(
+                    f'<div style="background:{CARD_BG_SOLID};border:1px solid {color};'
+                    f'border-radius:12px;padding:14px 18px;min-height:160px">'
+                    f'<div style="font-size:11px;color:{color};text-transform:uppercase;'
+                    f'font-weight:700;letter-spacing:.7px;margin-bottom:8px">{plat}</div>'
+                    f'{inner_html}</div>',
+                    unsafe_allow_html=True,
+                )
+
+                # st.markdown("</div>", unsafe_allow_html=True)
 
         # Determine overall best recommendation
         all_combos = _top_combos(df, None, n=1)
