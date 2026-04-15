@@ -1,6 +1,8 @@
 import io
 import os
+import zipfile
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 import plotly.express as px
@@ -11,6 +13,21 @@ from constants import (
     C, PLATFORM_COLORS, CARD_BG, CARD_BG_SOLID, BORDER,
     ICP_COLORS, PILLAR_COLORS,
 )
+
+SKILLS_DIR = Path(__file__).parent.parent / "skills"
+_ANALYTICS_SKILL_PATH = SKILLS_DIR / "marketing-analytics" / "marketing-analytics-skill.skill"
+
+
+@st.cache_data
+def _load_analytics_skill() -> str:
+    """Extract and return the SKILL.md content from the marketing-analytics .skill archive."""
+    if not _ANALYTICS_SKILL_PATH.exists():
+        return ""
+    with zipfile.ZipFile(_ANALYTICS_SKILL_PATH, "r") as zf:
+        md_entries = [n for n in zf.namelist() if n.endswith("SKILL.md")]
+        if not md_entries:
+            return ""
+        return zf.read(md_entries[0]).decode("utf-8")
 
 
 def render(df, plat_summary, start_date, end_date, run_ai, sidebar_api_key, model_backend="claude"):
@@ -187,17 +204,9 @@ def render(df, plat_summary, start_date, end_date, run_ai, sidebar_api_key, mode
                                         AvgImpressions=("Impressions","mean"), Clicks=("Clicks","sum"))
                                    .reset_index().sort_values("AvgEngagement", ascending=False))
 
-                    prompt = f"""You are a B2B social media analyst for Hidalga Technologies, a healthcare technology company serving oncology practices.
+                    skill_context = _load_analytics_skill()
 
-Hidalga's four ICP segments are:
-- Oncology Operations Leader (practice admins, COOs, directors of operations — focused on reducing patient delays and operational ROI)
-- Oncology Financial Leader (CFOs, revenue cycle managers — focused on denial reduction, clean claims, predictable cash flow)
-- Oncology Technical Leader (CIOs, CISOs, IT directors — focused on integration simplicity, FHIR/HL7, SOC 2, HIPAA)
-- Oncology Clinic Leader (medical directors, lead oncologists, nursing directors — focused on clinical sanity, reducing admin burden)
-
-Content pillars: Thought Leadership & Industry Insights (LI) | Product Development & Innovations (LI) | Events & Partnerships (All) | Patient-Centered Storytelling (IG/FB) | Team Spotlights & Company Culture (All)
-
-Analyze this performance data and provide 4-5 specific, actionable insights.
+                    prompt = f"""Analyze this performance data and provide 4-5 specific, actionable insights.
 
 PERIOD: {df["Date"].min().strftime("%B %d, %Y")} – {df["Date"].max().strftime("%B %d, %Y")}
 TOTAL: {total_impressions:,} impressions | {total_engagement:,} engagement | {total_clicks:,} clicks | {total_posts} posts
@@ -222,6 +231,7 @@ No preamble. Start with insight 1."""
 
                     text = llm_client.chat(
                         prompt,
+                        system=skill_context,
                         api_key=resolved_key,
                         model_backend=model_backend,
                         claude_model="claude-opus-4-6",

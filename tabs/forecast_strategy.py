@@ -1,4 +1,6 @@
 import os
+import zipfile
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -11,6 +13,21 @@ from constants import (
     C, PLATFORM_COLORS, CARD_BG, CARD_BG_SOLID, BORDER,
     ICP_COLORS, PILLAR_COLORS,
 )
+
+SKILLS_DIR = Path(__file__).parent.parent / "skills"
+_ANALYTICS_SKILL_PATH = SKILLS_DIR / "marketing-analytics" / "marketing-analytics-skill.skill"
+
+
+@st.cache_data
+def _load_analytics_skill() -> str:
+    """Extract and return the SKILL.md content from the marketing-analytics .skill archive."""
+    if not _ANALYTICS_SKILL_PATH.exists():
+        return ""
+    with zipfile.ZipFile(_ANALYTICS_SKILL_PATH, "r") as zf:
+        md_entries = [n for n in zf.namelist() if n.endswith("SKILL.md")]
+        if not md_entries:
+            return ""
+        return zf.read(md_entries[0]).decode("utf-8")
 
 
 def render(df, sidebar_api_key, model_backend="claude"):
@@ -478,11 +495,9 @@ def render(df, sidebar_api_key, model_backend="claude"):
                 for _, r in fmt_data.sort_values("Avg_Engagement", ascending=False).head(6).iterrows()
             ) if not fmt_data.empty else "No format data."
 
-            prompt = f"""You are a B2B social media strategist for Hidalga Technologies, \
-an oncology software company targeting four ICP segments: Oncology Operations Leader, \
-Oncology Financial Leader, Oncology Technical Leader, and Oncology Clinic Leader.
+            skill_context = _load_analytics_skill()
 
-Analyze this performance data and give specific, actionable recommendations.
+            prompt = f"""Analyze this performance data and give specific, actionable recommendations.
 
 PLATFORM FORECASTS ({forecast_metric}, next {forecast_horizon} weeks):
 {chr(10).join(fc_lines) if fc_lines else "Insufficient historical data for forecast."}
@@ -495,10 +510,6 @@ TOP SEGMENT × PILLAR COMBOS BY IMPRESSIONS:
 
 TOP CONTENT FORMATS BY AVG ENGAGEMENT:
 {fmt_ctx}
-
-Content pillars available: Thought Leadership & Industry Insights, Product Development & \
-Innovations, Events & Partnerships, Patient-Centered Storytelling, Team Spotlights & \
-Company Culture.
 
 Provide exactly:
 1. Which 1-2 platforms to prioritize and why (cite the trend data)
@@ -513,6 +524,7 @@ Be concise and direct. No generic advice — every recommendation must cite spec
                 try:
                     text = llm_client.chat(
                         prompt,
+                        system=skill_context,
                         api_key=resolved_key,
                         model_backend=model_backend,
                         claude_model="claude-opus-4-6",
