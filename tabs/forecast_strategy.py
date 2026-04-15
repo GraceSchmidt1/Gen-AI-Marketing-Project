@@ -378,17 +378,13 @@ def render(df, sidebar_api_key, model_backend="claude"):
         )
 
         rec_c1, rec_c2 = st.columns(2)
+
         with rec_c1:
-            st.markdown(
-                f'<div style="background:{CARD_BG_SOLID};border:1px solid {BORDER};'
-                f'border-radius:12px;padding:16px 20px">',
-                unsafe_allow_html=True,
-            )
-            st.markdown("**🟢 Focus for Engagement**")
+            rows_html = ""
             for _, row in top_eng_rec.head(3).iterrows():
                 ic = ICP_COLORS.get(row["ICP_Segment"], C["accent"])
                 pc = PILLAR_COLORS.get(row["Content_Pillar"], C["muted"])
-                st.markdown(
+                rows_html += (
                     f'<div style="margin:8px 0;padding:10px;'
                     f'background:rgba(57,122,114,0.08);border-radius:8px">'
                     f'<span style="color:{ic};font-weight:700">{row["ICP_Segment"]}</span>'
@@ -396,22 +392,23 @@ def render(df, sidebar_api_key, model_backend="claude"):
                     f'<span style="color:{pc}">{row["Content_Pillar"]}</span><br>'
                     f'<span style="color:{C["green"]};font-size:13px">'
                     f'Avg engagement: <strong>{row["Engagement"]:.1f}</strong></span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
+                    f'</div>'
                 )
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with rec_c2:
             st.markdown(
                 f'<div style="background:{CARD_BG_SOLID};border:1px solid {BORDER};'
-                f'border-radius:12px;padding:16px 20px">',
+                f'border-radius:12px;padding:16px 20px">'
+                f'<p style="margin:0 0 8px 0;font-weight:700">🟢 Focus for Engagement</p>'
+                f'{rows_html}'
+                f'</div>',
                 unsafe_allow_html=True,
             )
-            st.markdown("**📣 Focus for Reach (Impressions)**")
+
+        with rec_c2:
+            rows_html = ""
             for _, row in top_imp_rec.head(3).iterrows():
                 ic = ICP_COLORS.get(row["ICP_Segment"], C["accent"])
                 pc = PILLAR_COLORS.get(row["Content_Pillar"], C["muted"])
-                st.markdown(
+                rows_html += (
                     f'<div style="margin:8px 0;padding:10px;'
                     f'background:rgba(57,122,114,0.08);border-radius:8px">'
                     f'<span style="color:{ic};font-weight:700">{row["ICP_Segment"]}</span>'
@@ -419,11 +416,16 @@ def render(df, sidebar_api_key, model_backend="claude"):
                     f'<span style="color:{pc}">{row["Content_Pillar"]}</span><br>'
                     f'<span style="color:{C["accent"]};font-size:13px">'
                     f'Avg impressions: <strong>{row["Impressions"]:.1f}</strong></span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
+                    f'</div>'
                 )
-            st.markdown('</div>', unsafe_allow_html=True)
-
+            st.markdown(
+                f'<div style="background:{CARD_BG_SOLID};border:1px solid {BORDER};'
+                f'border-radius:12px;padding:16px 20px">'
+                f'<p style="margin:0 0 8px 0;font-weight:700">📣 Focus for Reach (Impressions)</p>'
+                f'{rows_html}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
     # Best format per platform cards
     if not fmt_data.empty:
         st.markdown("<br>", unsafe_allow_html=True)

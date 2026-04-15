@@ -30,7 +30,7 @@ def render(df_all_seg):
         f'padding:12px 16px;margin-top:4px;font-size:13px;color:{C["muted"]}">'
         f'📅 <strong style="color:{C["accent"]}">{selected_week_start.strftime("%b %d")} – '
         f'{selected_week_end.strftime("%b %d, %Y")}</strong>'
-        f'&nbsp;&nbsp;|&nbsp;&nbsp;Review cadence: <strong style="color:{C["accent"]}">Every Monday</strong>'
+        f'&nbsp;&nbsp;|&nbsp;&nbsp;Review cadence: <strong style="color:{C["accent"]}">Every Wednesday</strong>'
         f'</div>',
         unsafe_allow_html=True,
     )
