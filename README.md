@@ -93,15 +93,28 @@ The final tab closes the loop from analytics to content creation.
 
 The tab reads the post data to identify which ICP segment and content pillar combination has the highest average engagement for each platform, and pre-populates those as recommendations. The user selects a platform (LinkedIn, Instagram, or Facebook), an ICP segment, a content pillar, a brand value, and writes a short topic brief.
 
-Clicking **Generate** loads the corresponding **Claude Code skill file** for that platform — a `.skill` zip archive containing `SKILL.md`, which encodes Hidalga's brand voice, tone guidelines, audience-specific messaging rules, and post structure for that platform. The skill content is injected as the system prompt, and the user's brief becomes the user message. The AI streams the generated post directly into the page.
+Clicking **Generate** loads two layers of skill context. First, `skills/hidalga-marketing-reference/hidalga-marketing-reference.skill` — a reference hub containing Hidalga's brand voice, forbidden words, tone standards, full ICP segment personas, and content pillar definitions. Then the platform-specific skill for the selected channel. Both are injected as the system prompt (when using Claude); the user's brief becomes the user message. The AI generates the post directly into the page.
 
-Three skill files were built:
+Four platform and reference skill files are used for content generation:
 
 - `skills/hidalga-linkedin-post.skill` — LinkedIn posts for B2B oncology audiences, professional tone, thought leadership framing
 - `skills/hidalga-instagram-caption.skill` — Instagram captions, patient-centered and culture-forward
 - `skills/hidalga-facebook-post.skill` — Facebook posts, blending clinical storytelling with operational messaging
+- `skills/hidalga-marketing-reference/hidalga-marketing-reference.skill` — brand standards, ICP personas, content pillar rules, SOPs for Canva, video, workflow, and conversion sprints
 
-A fourth skill, `skills/marketing-analytics/marketing-analytics-skill.skill`, encodes the ICP framework and content strategy for use as a reference context in AI analysis calls.
+The marketing reference skill includes seven reference documents:
+
+| Reference File | Purpose |
+|---|---|
+| `brand-and-values.md` | Mission, values, tone voice, forbidden words |
+| `icp-and-content-pillars.md` | Full ICP segment personas and content pillar definitions |
+| `social-strategy-sop.md` | Posting cadence, content direction rules, monthly review process |
+| `workflow-and-tools.md` | Planner → Loomly workflow, approval steps, publishing hygiene |
+| `canva-image-sop.md` | Image creation process for Instagram and LinkedIn |
+| `video-content-sop.md` | Short-form video standards, scripting, AI-assisted generation |
+| `conversion-sprint-template.md` | Monthly experiment sprint structure and hypothesis framework |
+
+A fifth skill, `skills/marketing-analytics/marketing-analytics-skill.skill`, encodes the ICP framework and content strategy. It is loaded as system context for AI calls on both the Overview and Forecast & Strategy tabs (Claude backend only).
 
 ---
 
@@ -111,7 +124,7 @@ The sidebar exposes two AI options:
 
 **Claude (Anthropic)** — calls `claude-opus-4-6` via the Anthropic API. Requires an API key passed either through the sidebar or the `ANTHROPIC_API_KEY` environment variable. Used for AI insights on the Overview tab, strategy memos on the Forecast tab, and post generation in the Content Generator.
 
-**Local — Gemma-4 (LM Studio)** — calls a locally running instance of Gemma 4 E4B via LM Studio's OpenAI-compatible endpoint on `localhost:1234`. This runs entirely offline — no API key required. The same prompt interface is used for both backends; `llm_client.py` abstracts the routing.
+**Local — Gemma-4 (LM Studio)** — calls a locally running instance of Gemma 4 E4B via LM Studio's OpenAI-compatible endpoint on `localhost:1234`. This runs entirely offline — no API key required. The same prompt interface is used for both backends; `llm_client.py` abstracts the routing. Because Gemma has a smaller context window, skill files are not injected for local calls — the data prompt alone is sent as a single user message.
 
 ---
 
@@ -175,6 +188,16 @@ Gen-AI-Marketing-Project/
     ├── hidalga-linkedin-post.skill
     ├── hidalga-instagram-caption.skill
     ├── hidalga-facebook-post.skill
+    ├── hidalga-marketing-reference/
+    │   ├── hidalga-marketing-reference.skill
+    │   └── references/
+    │       ├── brand-and-values.md
+    │       ├── icp-and-content-pillars.md
+    │       ├── social-strategy-sop.md
+    │       ├── workflow-and-tools.md
+    │       ├── canva-image-sop.md
+    │       ├── video-content-sop.md
+    │       └── conversion-sprint-template.md
     └── marketing-analytics/
         ├── marketing-analytics-skill.skill
         └── references/
