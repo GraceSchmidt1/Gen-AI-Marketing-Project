@@ -22,6 +22,14 @@ SKILL_FILES = {
     "Facebook":  SKILLS_DIR / "hidalga-facebook-post.skill",
 }
 
+_MARKETING_REF_SKILL_PATH = SKILLS_DIR / "hidalga-marketing-reference" / "hidalga-marketing-reference.skill"
+
+# Reference files within the marketing-reference skill that are always relevant for content creation
+_ALWAYS_LOAD_REFS = [
+    "hidalga-marketing-reference/references/brand-and-values.md",
+    "hidalga-marketing-reference/references/icp-and-content-pillars.md",
+]
+
 ICP_SEGMENTS = [
     "Oncology Operations Leader",
     "Oncology Financial Leader",
@@ -61,6 +69,20 @@ def _load_skill(platform: str) -> str:
         if not md_entries:
             return ""
         return zf.read(md_entries[0]).decode("utf-8")
+
+
+@st.cache_data
+def _load_marketing_ref() -> str:
+    """Extract brand-and-values and icp-and-content-pillars from the marketing reference skill."""
+    if not _MARKETING_REF_SKILL_PATH.exists():
+        return ""
+    sections: list[str] = []
+    with zipfile.ZipFile(_MARKETING_REF_SKILL_PATH, "r") as zf:
+        available = zf.namelist()
+        for ref_path in _ALWAYS_LOAD_REFS:
+            if ref_path in available:
+                sections.append(zf.read(ref_path).decode("utf-8"))
+    return "\n\n---\n\n".join(sections)
 
 
 def _top_combos(df: pd.DataFrame, platform: str | None, n: int = 3) -> pd.DataFrame:
@@ -333,6 +355,13 @@ def render(df: pd.DataFrame, sidebar_api_key: str, model_backend: str = "claude"
         # Strip frontmatter from skill (--- ... ---) before using as system prompt
         import re
         skill_body = re.sub(r"^---\n.*?\n---\n", "", skill_md, flags=re.DOTALL).strip()
+
+        # Prepend the marketing reference (brand + ICP) for Claude only —
+        # local Gemma context window is too small to handle both skill files
+        if model_backend != "local":
+            marketing_ref = _load_marketing_ref()
+            if marketing_ref:
+                skill_body = marketing_ref + "\n\n---\n\n" + skill_body
 
         # Build the user message
         user_parts = [f"Topic: {topic.strip()}"]

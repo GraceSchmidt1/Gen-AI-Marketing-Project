@@ -495,7 +495,8 @@ def render(df, sidebar_api_key, model_backend="claude"):
                 for _, r in fmt_data.sort_values("Avg_Engagement", ascending=False).head(6).iterrows()
             ) if not fmt_data.empty else "No format data."
 
-            skill_context = _load_analytics_skill()
+            # Analytics skill is too large for local Gemma context window
+            skill_context = _load_analytics_skill() if model_backend != "local" else ""
 
             prompt = f"""Analyze this performance data and give specific, actionable recommendations.
 

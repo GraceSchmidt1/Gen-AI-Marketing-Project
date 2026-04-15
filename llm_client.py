@@ -34,10 +34,9 @@ def chat(
 
 
 def _lm_studio_chat(system: str, user_msg: str, max_tokens: int) -> str:
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": user_msg})
+    # LM Studio / Gemma requires a single user message — fold system into it
+    content = f"{system}\n\n---\n\n{user_msg}" if system else user_msg
+    messages = [{"role": "user", "content": content}]
 
     resp = requests.post(
         LM_STUDIO_BASE_URL,

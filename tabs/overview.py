@@ -204,7 +204,8 @@ def render(df, plat_summary, start_date, end_date, run_ai, sidebar_api_key, mode
                                         AvgImpressions=("Impressions","mean"), Clicks=("Clicks","sum"))
                                    .reset_index().sort_values("AvgEngagement", ascending=False))
 
-                    skill_context = _load_analytics_skill()
+                    # Analytics skill is too large for local Gemma context window
+                    skill_context = _load_analytics_skill() if model_backend != "local" else ""
 
                     prompt = f"""Analyze this performance data and provide 4-5 specific, actionable insights.
 
