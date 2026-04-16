@@ -1,5 +1,10 @@
+import os
+
 import pandas as pd
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()  # load .env secrets into os.environ
 
 from constants import C
 from data_loader import load_all, load_segments, DATA_DIR
@@ -121,6 +126,17 @@ with st.sidebar:
 
     run_ai = st.button("Generate AI Insights", type="primary", use_container_width=True)
 
+    st.markdown("---")
+    st.markdown("### Canva")
+    canva_api_token = st.text_input(
+        "Canva Access Token",
+        value=os.environ.get("CANVA_ACCESS_TOKEN", ""),
+        type="password",
+        placeholder="Paste your Canva access token…",
+        help="Connect to your company's Canva account to browse brand templates. "
+             "Set CANVA_ACCESS_TOKEN in .env to pre-fill.",
+    )
+
 # ── Apply overview filters ────────────────────────────────────────────────────
 if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
     start_date, end_date = date_range
@@ -159,7 +175,7 @@ with tab_utm:
     utm_standards.render()
 
 with tab_content:
-    content_generator.render(df, sidebar_api_key, model_backend)
+    content_generator.render(df, sidebar_api_key, model_backend, canva_api_token=canva_api_token)
 
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown(

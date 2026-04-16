@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+import canva_client
 import llm_client
 from constants import C, CARD_BG_SOLID, BORDER, ICP_COLORS, PILLAR_COLORS, PLATFORM_COLORS
 
@@ -113,7 +114,66 @@ def _engagement_rate(df: pd.DataFrame, platform: str) -> float:
     return sub["Engagement"].sum() / sub["Impressions"].sum() * 100
 
 
-def render(df: pd.DataFrame, sidebar_api_key: str, model_backend: str = "claude") -> None:
+@st.cache_data(ttl=300, show_spinner=False)
+def _fetch_canva_templates(token: str, query: str) -> list[dict]:
+    """Fetch and cache Canva brand templates (5-min TTL)."""
+    return canva_client.get_brand_templates(token, query=query, limit=6)
+
+
+def _render_canva_section(platform: str, canva_api_token: str) -> None:
+    """Render the 'Design in Canva' section with brand template cards."""
+    st.markdown("---")
+    st.markdown("### Design in Canva - Integration in Development")
+    st.markdown(
+        f'<p style="color:{C["muted"]};font-size:13px;margin-top:-8px">'
+        "Open a brand template from your company's Canva account to design this post.</p>",
+        unsafe_allow_html=True,
+    )
+
+    search_col, _ = st.columns([2, 3])
+    with search_col:
+        search_query = st.text_input(
+            "Filter templates",
+            value=platform,
+            placeholder=f"e.g. {platform}",
+            key="canva_search",
+            label_visibility="collapsed",
+        )
+
+    with st.spinner("Loading Canva templates…"):
+        try:
+            templates = _fetch_canva_templates(canva_api_token, search_query)
+        except Exception as e:
+            st.warning(f"Could not load Canva templates: {e}", icon="⚠️")
+            return
+
+    if not templates:
+        st.info("No templates found. Try a different search term or check your access token.", icon="🔍")
+        return
+
+    cols = st.columns(min(len(templates), 3))
+    for idx, tmpl in enumerate(templates):
+        col = cols[idx % 3]
+        with col:
+            link = tmpl["edit_url"] or tmpl["view_url"]
+            if tmpl["thumbnail_url"]:
+                st.image(tmpl["thumbnail_url"], use_container_width=True)
+            st.markdown(
+                f'<div style="font-size:12px;font-weight:600;color:{C["text"] if "text" in C else "#e8f4f2"}'
+                f';margin:4px 0 6px 0;line-height:1.3">{tmpl["title"]}</div>',
+                unsafe_allow_html=True,
+            )
+            if link:
+                st.markdown(
+                    f'<a href="{link}" target="_blank" rel="noopener noreferrer" '
+                    f'style="display:inline-block;background:#8B3CF7;color:#fff;'
+                    f'padding:5px 12px;border-radius:7px;font-size:12px;font-weight:600;'
+                    f'text-decoration:none;margin-bottom:12px">Open Template ↗</a>',
+                    unsafe_allow_html=True,
+                )
+
+
+def render(df: pd.DataFrame, sidebar_api_key: str, model_backend: str = "claude", canva_api_token: str = "") -> None:
     st.markdown(
         f"""<div style="padding:0 0 20px 0">
           <h1 style="margin:0;font-size:26px;font-weight:800;">Content Generator</h1>
@@ -418,3 +478,11 @@ def render(df: pd.DataFrame, sidebar_api_key: str, model_backend: str = "claude"
         # Copy-friendly expander
         with st.expander("Copy raw text"):
             st.code(generated, language=None)
+
+        # Canva template links — only shown after a successful generation
+        if canva_api_token:
+            _render_canva_section(platform, canva_api_token)
+
+    # If no generation yet but token is set, show the Canva section as a browse panel
+    elif canva_api_token:
+        _render_canva_section(platform, canva_api_token)
